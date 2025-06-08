@@ -1,43 +1,67 @@
-from flask import Flask
-from threading import Thread
 import discord
 from discord.ext import commands
 import os
 
-# === Flask Web Server to Keep Alive ===
-app = Flask('')
+# Your 3 owner IDs for permission checks
+OWNER_IDS = {1076200413503701072, 862239588391321600, 1135837895496847503}
 
-@app.route('/')
-def home():
-    return "✅ Web server is running!"
+intents = discord.Intents.all()
 
-def run():
-    app.run(host='0.0.0.0', port=8080)
+bot = commands.Bot(command_prefix='?', intents=intents, help_command=None)
 
-def keep_alive():
-    Thread(target=run).start()
-
-# === Discord Bot Setup ===
-intents = discord.Intents.default()
-intents.message_content = True  # Required to respond to messages
-
-bot = commands.Bot(command_prefix='?', intents=intents)
+# Check if author is owner
+def is_owner():
+    def predicate(ctx):
+        return ctx.author.id in OWNER_IDS
+    return commands.check(predicate)
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online as {bot.user}")
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    print("------")
 
-@bot.command()
-async def ping(ctx):
-    await ctx.send("🏓 Pong!")
+# Custom help command that only owners can use
+@bot.command(name='needhelp')
+@is_owner()
+async def needhelp(ctx):
+    embed = discord.Embed(title="Bot Commands Help", color=discord.Color.blue())
+    embed.add_field(name="?role @user <role_key>", value="Assign roles", inline=False)
+    embed.add_field(name="?poll <question>", value="Create poll", inline=False)
+    embed.add_field(name="?dm <user/all> <message>", value="Send DM", inline=False)
+    embed.add_field(name="?joiners", value="List tournament joiners", inline=False)
+    embed.add_field(name="?announce #channel", value="Send tournament announcement", inline=False)
+    embed.add_field(name="?say <message>", value="Bot repeats message", inline=False)
+    embed.add_field(name="?ticket commands", value="Use ticket related commands", inline=False)
+    embed.add_field(name="?style <text>", value="Send styled text message", inline=False)
+    await ctx.send(embed=embed)
 
-# === Start Everything ===
-keep_alive()
+# Load all cogs
+async def load_all_cogs():
+    cogs = [
+        "cogs.advanced_autoresponder",
+        "cogs.advanced_ticket",
+        "cogs.dm_manager",
+        "cogs.poll",
+        "cogs.role",
+        "cogs.styled_responder",
+        "cogs.tournament",
+        "cogs.utility",
+    ]
+    for cog in cogs:
+        try:
+            await bot.load_extension(cog)
+            print(f"Loaded {cog}")
+        except Exception as e:
+            print(f"Failed to load {cog}: {e}")
 
-try:
-    token = os.environ['TOKEN']
-    bot.run(token)
-except KeyError:
-    print("❌ TOKEN not set in environment variables!")
-except Exception as e:
-    print(f"❌ Error: {e}")
+async def main():
+    await load_all_cogs()
+    token = os.getenv("TOKEN")
+    if not token:
+        print("Error: TOKEN environment variable not set")
+        return
+    await bot.start(token)
+
+import asyncio
+asyncio.run(main())
+    
