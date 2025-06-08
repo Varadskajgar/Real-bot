@@ -4,7 +4,6 @@ import discord
 from discord.ext import commands
 import os
 
-# Setup Flask app
 app = Flask('')
 
 @app.route('/')
@@ -18,25 +17,23 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# Setup Discord bot
-intents = discord.Intents.all()
+intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='?', intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online as {bot.user}")
+    print(f"✅ Bot online as {bot.user}")
 
 @bot.command()
 async def ping(ctx):
     await ctx.send("🏓 Pong!")
 
-# Start Flask server and then bot
 keep_alive()
 
 try:
     token = os.environ['TOKEN']
     bot.run(token)
 except KeyError:
-    print("❌ TOKEN not found in environment variables!")
+    print("❌ TOKEN not set in environment variables!")
 except Exception as e:
-    print(f"❌ An error occurred: {e}")
+    print(f"❌ Error: {e}")
